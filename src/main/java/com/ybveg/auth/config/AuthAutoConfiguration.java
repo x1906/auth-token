@@ -17,7 +17,7 @@ import org.springframework.context.annotation.Configuration;
 public class AuthAutoConfiguration {
 
 
-  @Value("auth.module.scan")
+  @Value("${auth.module.scan}")
   private String scan;  //模块扫描路径
 
   @Autowired

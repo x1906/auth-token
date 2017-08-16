@@ -1,19 +1,31 @@
 package com.ybveg.auth;
 
+import com.ybveg.auth.exception.AuthParameterException;
+import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
+import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.core.io.support.ResourcePatternResolver;
+import org.springframework.core.type.classreading.CachingMetadataReaderFactory;
+import org.springframework.core.type.classreading.MetadataReader;
+import org.springframework.core.type.classreading.MetadataReaderFactory;
 
 /**
  * @auther zbb
  * @create 2017/8/14
  */
+@Slf4j
 public class AuthScanner {
 
 
@@ -25,19 +37,69 @@ public class AuthScanner {
     this.scan = scan;
   }
 
-  public List<ModuleModel> scan() {
-    List<ModuleModel> result = new ArrayList<>();
-    Map<String, ModuleModel> map = new HashMap<>();
-    result.addAll(map.values());
-    return result;
+  public Set<ModuleModel> scan() throws IOException {
+
+    Map<ModuleModel, List<FunctionModel>> result = new HashMap<>();
+    List<Resource> resources = getResource();
+
+    if (!resources.isEmpty()) {
+      MetadataReaderFactory readerFactory = new CachingMetadataReaderFactory(
+          this.resourcePatternResolver);
+      for (Resource resource : resources) {
+        if (resource.isReadable()) {
+          MetadataReader reader = readerFactory.getMetadataReader(resource);
+          String className = reader.getClassMetadata().getClassName();
+          try {
+            Class<?> clazz = Class.forName(className);
+            Module module = clazz.getAnnotation(Module.class);
+            if (module == null) {
+              continue;
+            }
+
+
+            Class<? extends ModuleType>[] moduleClasses = module.value();
+            for (Class<? extends ModuleType> moduleClass : moduleClasses) {
+              if (!result.containsKey(moduleClass.getName())) {
+                ModuleModel moduleModel = Utils.classToModuleModel(moduleClass);
+                result.put(moduleModel, moduleModel.getFunctions());
+              }
+            }
+
+            Method[] methods = clazz.getMethods();
+            for (Method m : methods) {
+              Function function = m.getAnnotation(Function.class);
+              if (function != null) {
+              }
+            }
+
+          } catch (ClassNotFoundException e) {
+            log.error("AuthScanner {} not found", resource.getFilename(), e);
+          }
+        }
+      }
+    }
+    return result.keySet();
   }
 
 
-  public static List<ModuleModel> resolve(Module module, List<Function> functions) {
+  private List<Resource> getResource() throws AuthParameterException, IOException {
+    if (StringUtils.isEmpty(scan)) {
+      throw new AuthParameterException("未配置模块扫描包 auth.module.scan");
+    }
+    List<Resource> list = new ArrayList<>();
+    String[] scans = scan.split(",");
+    for (String s : scans) {
+      list.addAll(Arrays.asList(resourcePatternResolver.getResources(s)));
+    }
+    return list;
+  }
+
+
+  public void resolve(Module module, List<Function> functions,
+      Map<ModuleModel, List<FunctionModel>> map) {
 
     Map<Class<? extends ModuleType>, Class<? extends FunctionType>> moduleMap = new HashMap<>();
     Class<? extends ModuleType>[] classes = module.value();
-    return null;
   }
 
 
@@ -51,7 +113,7 @@ public class AuthScanner {
    * @param module 模块注解
    * @param function 功能注解
    */
-  public static Map<String, Set<String>> resolveToMap(Module module, Function function) {
+  public Map<String, Set<String>> resolveToMap(Module module, Function function) {
     Map<String, Set<String>> map = new HashMap<>();
 
     Class<? extends ModuleType>[] moduleClasses = module.value();
@@ -79,7 +141,7 @@ public class AuthScanner {
   /**
    * 返回功能模块关系描述Map <br/> key为模块class name <br />value为模块功能 class name set集合
    */
-  private static Map<String, Set<String>> resolveRelationString(
+  private Map<String, Set<String>> resolveRelationString(
       Relation[] relations) {
     Map<String, Set<String>> relationMap = new HashMap<>();
     if (relations != null) {

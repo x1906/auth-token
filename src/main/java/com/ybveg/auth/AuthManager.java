@@ -2,6 +2,8 @@ package com.ybveg.auth;
 
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
+import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -47,5 +49,5 @@ public interface AuthManager {
   /**
    * 扫描模块功能, 配置参数 auth.module.scan
    */
-  List<ModuleModel> scan();
+  Collection<ModuleModel> scan() throws IOException;
 }
