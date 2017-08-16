@@ -1,7 +1,9 @@
 package com.ybveg.auth.model;
 
 import java.io.Serializable;
-import java.util.List;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -19,7 +21,7 @@ public class ModuleModel implements Serializable {
   private String name;  //模块名称
   private String clazz; // class
 
-  List<FunctionModel> functions;
+  Set<FunctionModel> functions;
 
   @Override
   public String toString() {    //重写toString 便于权限验证后台对比
@@ -29,5 +31,27 @@ public class ModuleModel implements Serializable {
   @Override
   public int hashCode() {
     return this.clazz.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof ModuleModel) {
+      return ((ModuleModel) obj).getClazz().equals(this.clazz);
+    }
+    return super.equals(obj);
+  }
+
+  public void addFunction(FunctionModel function) {
+    if (this.functions == null) {
+      this.functions = new HashSet<>();
+    }
+    this.functions.add(function);
+  }
+
+  public void addAllFunction(Collection<FunctionModel> functions) {
+    if (this.functions == null) {
+      this.functions = new HashSet<>();
+    }
+    this.functions.addAll(functions);
   }
 }

@@ -6,10 +6,10 @@ package com.ybveg.auth.exception;
  * @auther zbb
  * @create 2017/8/15
  */
-public class AuthParameterException extends RuntimeException {
+public class AuthScanException extends RuntimeException {
 
 
-  public AuthParameterException(String message) {
+  public AuthScanException(String message) {
     super(message);
   }
 }

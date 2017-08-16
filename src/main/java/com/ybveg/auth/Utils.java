@@ -2,7 +2,7 @@ package com.ybveg.auth;
 
 import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
-import java.util.ArrayList;
+import java.util.HashSet;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -20,7 +20,7 @@ public class Utils {
       module.setClazz(clazz.getName());
       module.setCode(instance.getCode());
       module.setName(instance.getName());
-      module.setFunctions(new ArrayList<>());
+      module.setFunctions(new HashSet<>());
       return module;
     } catch (InstantiationException | IllegalAccessException e) {
       log.error("classToModuleModel error {}", clazz.getName(), e);

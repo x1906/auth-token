@@ -1,11 +1,10 @@
 package com.ybveg.auth;
 
-import com.ybveg.auth.exception.AuthParameterException;
+import com.ybveg.auth.exception.AuthScanException;
 import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
 import com.ybveg.auth.token.TokenFactory;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -57,8 +56,8 @@ public abstract class AuthAbstractManager implements AuthManager {
         for (ModuleModel m : moduleModels) {
           if (map.containsKey(m.getClazz())) {
             if (function != null) {
-              List<FunctionModel> functions = Optional.of(m.getFunctions())
-                  .orElse(Collections.EMPTY_LIST);
+              Set<FunctionModel> functions = Optional.of(m.getFunctions())
+                  .orElse(Collections.emptySet());
               functions.retainAll(map.get(m.getClazz()));
               if (functions.size() > 0) {
                 return m;
@@ -77,7 +76,7 @@ public abstract class AuthAbstractManager implements AuthManager {
     }
   }
 
-  public Collection<ModuleModel> scan() throws IOException, AuthParameterException {
+  public Collection<ModuleModel> scan() throws AuthScanException {
     return scanner.scan();
   }
 

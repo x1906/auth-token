@@ -27,4 +27,13 @@ public class FunctionModel implements Serializable {
   public int hashCode() {
     return this.clazz.hashCode();
   }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof FunctionModel) {
+      FunctionModel model = (FunctionModel) obj;
+      return this.clazz.equals(model.getClazz());
+    }
+    return super.equals(obj);
+  }
 }

@@ -1,12 +1,13 @@
 package com.ybveg.auth;
 
-import com.ybveg.auth.exception.AuthParameterException;
+import com.ybveg.auth.exception.AuthScanException;
 import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,18 +29,28 @@ import org.springframework.core.type.classreading.MetadataReaderFactory;
 @Slf4j
 public class AuthScanner {
 
+  private static final String POSTFIX = "/**/*.class";
+  private static final String PREFIX = "classpath*:";
 
-  private String scan;
+
+  private List<String> scans;
 
   private ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver();
 
-  public AuthScanner(String scan) {
-    this.scan = scan;
+  public AuthScanner(String scan) throws AuthScanException {
+    if (StringUtils.isNotEmpty(scan)) {
+      String[] sc = scan.replaceAll("\\.", "/").split(",");
+      scans = new ArrayList<>();
+      for (String s : sc) {
+        scans.add(PREFIX + s + POSTFIX);
+      }
+    } else {
+      throw new AuthScanException("未配置模块扫描包 auth.module.scan");
+    }
   }
 
-  public Set<ModuleModel> scan() throws IOException {
-
-    Map<ModuleModel, List<FunctionModel>> result = new HashMap<>();
+  public Collection<ModuleModel> scan() {
+    final Map<String, ModuleModel> resultMap = new HashMap<>();  // 全局模块集合
     List<Resource> resources = getResource();
 
     if (!resources.isEmpty()) {
@@ -47,49 +58,90 @@ public class AuthScanner {
           this.resourcePatternResolver);
       for (Resource resource : resources) {
         if (resource.isReadable()) {
-          MetadataReader reader = readerFactory.getMetadataReader(resource);
-          String className = reader.getClassMetadata().getClassName();
           try {
+            MetadataReader reader = readerFactory.getMetadataReader(resource);
+            String className = reader.getClassMetadata().getClassName();
             Class<?> clazz = Class.forName(className);
             Module module = clazz.getAnnotation(Module.class);
             if (module == null) {
               continue;
             }
+            final Map<String, Set<FunctionModel>> toSingle = new HashMap<>();// 指定了模块的功能集合
+            final Set<FunctionModel> toAll = new HashSet<>();   // 没有指定模块的功能集合
 
-
-            Class<? extends ModuleType>[] moduleClasses = module.value();
-            for (Class<? extends ModuleType> moduleClass : moduleClasses) {
-              if (!result.containsKey(moduleClass.getName())) {
-                ModuleModel moduleModel = Utils.classToModuleModel(moduleClass);
-                result.put(moduleModel, moduleModel.getFunctions());
-              }
-            }
-
-            Method[] methods = clazz.getMethods();
+            Method[] methods = clazz.getDeclaredMethods();  // 取不继承方法
             for (Method m : methods) {
               Function function = m.getAnnotation(Function.class);
               if (function != null) {
+                // 指定模块
+                Map<String, Set<FunctionModel>> moduleFunctionModel = moduleRelationFunctionModel(
+                    function.relation());
+
+                moduleFunctionModel.forEach((key, value) -> { //  JDK8 特性 forEach
+                  toSingle.merge(key, value, (oldValue, newValue) -> {  // JDK8 特性 Map 合并值
+                    if (oldValue == null) {   // 如果旧值不存在 说明 toSingle 内没有 此key 直接返回newValue
+                      oldValue = newValue;
+                    } else {
+                      oldValue.addAll(newValue);  // 如果旧值存在 在oldValue中加入newValue
+                    }
+                    return oldValue;
+                  });
+                });
+
+                Map<String, Set<String>> functionModule = functionRelationModule(
+                    function.relation());
+
+                Class<? extends FunctionType>[] functionClasses = function.value();
+                for (Class<? extends FunctionType> functionClass : functionClasses) {
+                  if (!functionModule.containsKey(functionClass.getName())) {  //如果指定了模块
+                    toAll.add(Utils.classToFunctionModel(functionClass));
+                  }
+                }
               }
             }
 
-          } catch (ClassNotFoundException e) {
+            final Map<String, ModuleModel> classHasModule = new HashMap<>(); // 当前类含有的模块
+
+            Class<? extends ModuleType>[] moduleClasses = module.value();
+            for (Class<? extends ModuleType> moduleClass : moduleClasses) {
+              ModuleModel moduleModel = null;
+              if (!resultMap.containsKey(moduleClass.getName())) {   // 判断 全局模块集合 内是否有此模块
+                moduleModel = Utils.classToModuleModel(moduleClass);   // 如果没有 生成此模块对象
+                resultMap.put(moduleClass.getName(), moduleModel);   // 添加到 全局模块集合
+                classHasModule.put(moduleClass.getName(), moduleModel);  // 添加到 当前类含有的模块中
+              } else {                        // 如果有 从 全局模块集合 取出 放入到  当前类含有的模块中
+                moduleModel = resultMap.get(moduleClass.getName());
+                classHasModule.put(moduleClass.getName(), moduleModel);
+              }
+              moduleModel.addAllFunction(toAll);   // 将 没有指定模块的功能集合 添加到此模块中
+            }
+
+            toSingle.forEach((key, value) -> {    // 将  指定了模块的功能集合 合并到 classHasModule
+              ModuleModel moduleModel = classHasModule.get(key);
+              if (moduleModel != null) {    // 如果 当前类有此模块  将此模块有的功能加入 否则不操作
+                moduleModel.addAllFunction(value);
+              }
+            });
+
+
+          } catch (ClassNotFoundException | IOException e) {
             log.error("AuthScanner {} not found", resource.getFilename(), e);
           }
         }
       }
     }
-    return result.keySet();
+    return resultMap.values();
   }
 
 
-  private List<Resource> getResource() throws AuthParameterException, IOException {
-    if (StringUtils.isEmpty(scan)) {
-      throw new AuthParameterException("未配置模块扫描包 auth.module.scan");
-    }
+  private List<Resource> getResource() {
     List<Resource> list = new ArrayList<>();
-    String[] scans = scan.split(",");
     for (String s : scans) {
-      list.addAll(Arrays.asList(resourcePatternResolver.getResources(s)));
+      try {
+        list.addAll(Arrays.asList(resourcePatternResolver.getResources(s)));
+      } catch (IOException e) {
+        log.error("AuthScanner getResource() error {}", s, e);
+      }
     }
     return list;
   }
@@ -120,7 +172,7 @@ public class AuthScanner {
     Class<? extends FunctionType>[] functionClasses = function.value();
 
     Set<String> toAll = new HashSet<>();
-    Map<String, Set<String>> relationMap = resolveRelationString(function.relation());
+    Map<String, Set<String>> relationMap = moduleRelationFunction(function.relation());
 
     for (Class<? extends FunctionType> functionClazz : functionClasses) {
       if (!relationMap.containsKey(functionClazz.getName())) { // 如果指定关系 表明所有
@@ -129,29 +181,28 @@ public class AuthScanner {
     }
 
     for (Class<? extends ModuleType> moduleClazz : moduleClasses) {
-      Set<String> temp = new HashSet<>();
-      temp.addAll(toAll);
-      temp.addAll(relationMap.get(moduleClazz.getName()));    //指定模块
-      map.put(moduleClazz.getName(), temp);
+      Set<String> set = new HashSet<>();
+      set.addAll(toAll);
+      set.addAll(relationMap.get(moduleClazz.getName()));    //指定模块
+      map.put(moduleClazz.getName(), set);
     }
 
     return map;
   }
 
   /**
-   * 返回功能模块关系描述Map <br/> key为模块class name <br />value为模块功能 class name set集合
+   * 返回模块与功能 关系描述Map <br/> key为Module class name <br />value为Function功能 class name set集合
    */
-  private Map<String, Set<String>> resolveRelationString(
-      Relation[] relations) {
+  private Map<String, Set<String>> moduleRelationFunction(Relation[] relations) {
     Map<String, Set<String>> relationMap = new HashMap<>();
     if (relations != null) {
       for (Relation relation : relations) {
-        if (relationMap.get(relation.module().getName()) != null) {
+        if (relationMap.containsKey(relation.module().getName())) {
           relationMap.get(relation.module().getName()).add(relation.func().getName());
         } else {
-          Set<String> temp = new HashSet<>();
-          temp.add(relation.func().getName());
-          relationMap.put(relation.module().getName(), temp);
+          Set<String> set = new HashSet<>();
+          set.add(relation.func().getName());
+          relationMap.put(relation.module().getName(), set);
         }
       }
     }
@@ -159,19 +210,39 @@ public class AuthScanner {
   }
 
   /**
-   * 返回功能模块关系描述Map <br/> key为模块class name <br />value为模块功能 class set集合
+   * 返回模块与功能 关系描述Map <br/> key为Module class name <br />value为FunctionModel set集合
    */
-  private static Map<String, Set<Class<? extends FunctionType>>> resolveRelationClass(
-      Relation[] relations) {
-    Map<String, Set<Class<? extends FunctionType>>> relationMap = new HashMap<>();
+  private Map<String, Set<FunctionModel>> moduleRelationFunctionModel(Relation[] relations) {
+    Map<String, Set<FunctionModel>> relationMap = new HashMap<>();
     if (relations != null) {
       for (Relation relation : relations) {
-        if (relationMap.get(relation.module().getName()) != null) {
-          relationMap.get(relation.module().getName()).add(relation.func());
+        if (relationMap.containsKey(relation.module().getName())) {
+          relationMap.get(relation.module().getName())
+              .add(Utils.classToFunctionModel(relation.func()));
         } else {
-          Set<Class<? extends FunctionType>> temp = new HashSet<>();
-          temp.add(relation.func());
-          relationMap.put(relation.module().getName(), temp);
+          Set<FunctionModel> set = new HashSet<>();
+          set.add(Utils.classToFunctionModel(relation.func()));
+          relationMap.put(relation.module().getName(), set);
+        }
+      }
+    }
+    return relationMap;
+  }
+
+  /**
+   * 返回功能与模块 关系描述Map <br/> key为Fucntion class name <br />value为Module功能 class set集合
+   */
+  private static Map<String, Set<String>> functionRelationModule(
+      Relation[] relations) {
+    Map<String, Set<String>> relationMap = new HashMap<>();
+    if (relations != null) {
+      for (Relation relation : relations) {
+        if (relationMap.containsKey(relation.func().getName())) {
+          relationMap.get(relation.func().getName()).add(relation.module().getName());
+        } else {
+          Set<String> set = new HashSet<>();
+          set.add(relation.module().getName());
+          relationMap.put(relation.func().getName(), set);
         }
       }
     }
