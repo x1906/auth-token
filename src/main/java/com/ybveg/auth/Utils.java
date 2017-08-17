@@ -20,7 +20,7 @@ public class Utils {
       module.setClazz(clazz.getName());
       module.setCode(instance.getCode());
       module.setName(instance.getName());
-      module.setFunctions(new HashSet<>());
+//      module.setFunctions(new HashSet<>());
       return module;
     } catch (InstantiationException | IllegalAccessException e) {
       log.error("classToModuleModel error {}", clazz.getName(), e);

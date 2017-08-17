@@ -51,6 +51,8 @@ public class AuthScanner {
 
   public Collection<ModuleModel> scan() {
     final Map<String, ModuleModel> resultMap = new HashMap<>();  // 全局模块集合
+    final Map<String, String> codeOfModule = new HashMap<>();  // key 为code 判断Module 编码是否重复
+    final Map<String, String> codeOfFunction = new HashMap<>();  // key 为code 判断Module 编码是否重复
     List<Resource> resources = getResource();
 
     if (!resources.isEmpty()) {
@@ -93,8 +95,20 @@ public class AuthScanner {
 
                 Class<? extends FunctionType>[] functionClasses = function.value();
                 for (Class<? extends FunctionType> functionClass : functionClasses) {
-                  if (!functionModule.containsKey(functionClass.getName())) {  //如果指定了模块
-                    toAll.add(Utils.classToFunctionModel(functionClass));
+                  FunctionModel functionModel = Utils.classToFunctionModel(functionClass);
+
+                  String functionClassName = codeOfFunction.get(functionModel.getCode());
+                  if (StringUtils.isNotEmpty(functionClassName)) { // 判断 Function 是否重复
+                    if (!functionClassName.equals(functionClass.getName())) {
+                      throw new AuthScanException("功能编码{0},不能对应多个Class,{1}和{2}",
+                          functionModel.getCode(),
+                          functionClassName, functionClass.getName());
+                    }
+                  } else {  //  如果为空 插入
+                    codeOfFunction.put(functionModel.getCode(), functionClass.getName());
+                  }
+                  if (!functionModule.containsKey(functionModel)) {  //如果指定了模块
+                    toAll.add(functionModel);
                   }
                 }
               }
@@ -113,6 +127,17 @@ public class AuthScanner {
                 moduleModel = resultMap.get(moduleClass.getName());
                 classHasModule.put(moduleClass.getName(), moduleModel);
               }
+              String moduleClassName = codeOfModule.get(moduleModel.getCode());
+              if (StringUtils.isNotEmpty(moduleClassName)) {        // 判断模块code 和 模块class 是否一一对应
+                if (!moduleModel.getClazz().equals(moduleClassName)) {
+                  throw new AuthScanException("模块编码{0},不能对应多个Class,{1}和{2}",
+                      moduleModel.getCode(),
+                      moduleClassName, moduleModel.getClazz());
+                }
+              } else {
+                codeOfModule.put(moduleModel.getCode(), moduleModel.getClazz());
+              }
+
               moduleModel.addAllFunction(toAll);   // 将 没有指定模块的功能集合 添加到此模块中
             }
 
