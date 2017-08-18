@@ -36,7 +36,7 @@
       <artifactId>spring-boot-configuration-processor</artifactId>
       <optional>true</optional>
     </dependency>
-    
+
     <!-- 装配Spring-Boot基础环境 -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -91,6 +91,22 @@
           <source>1.8</source>
           <target>1.8</target>
         </configuration>
+      </plugin>
+      <!--   要将源码放上去，需要加入这个插件    -->
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <attach>true</attach>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>compile</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
