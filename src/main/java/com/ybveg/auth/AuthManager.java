@@ -1,5 +1,8 @@
 package com.ybveg.auth;
 
+import com.ybveg.auth.exception.AuthScanException;
+import com.ybveg.auth.exception.TokenExpiredException;
+import com.ybveg.auth.exception.TokenInvalidException;
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
 import java.util.Collection;
@@ -27,7 +30,7 @@ public interface AuthManager {
    * @param rawToken token
    * @return 新的token
    */
-  AccessToken parseToken(String rawToken);
+  AccessToken parseToken(String rawToken) throws TokenInvalidException, TokenExpiredException;
 
   /**
    * 验证权限 请继承AuthAbstractManager 并实现getCurrentAuth
@@ -48,5 +51,5 @@ public interface AuthManager {
   /**
    * 扫描模块功能, 配置参数 auth.module.scan
    */
-  Collection<ModuleModel> scan();
+  Collection<ModuleModel> scan() throws AuthScanException;
 }

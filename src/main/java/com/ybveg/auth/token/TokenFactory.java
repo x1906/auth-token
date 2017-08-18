@@ -2,10 +2,16 @@ package com.ybveg.auth.token;
 
 import com.alibaba.fastjson.JSONObject;
 import com.ybveg.auth.config.TokenProperties;
+import com.ybveg.auth.exception.TokenExpiredException;
+import com.ybveg.auth.exception.TokenInvalidException;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.UnsupportedJwtException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -63,7 +69,8 @@ public class TokenFactory {
    * @param rawToken token
    * @return 新的token
    */
-  public AccessToken parseToken(String rawToken) {
+  public AccessToken parseToken(String rawToken)
+      throws TokenExpiredException, TokenInvalidException {
     Jws<Claims> jws = validToken(rawToken);
     Claims claims = jws.getBody();
     Date iat = claims.getIssuedAt();
@@ -76,8 +83,17 @@ public class TokenFactory {
     return new AccessToken(rawToken, claims);
   }
 
-  public Jws<Claims> validToken(String rawToken) {
-    return Jwts.parser().setSigningKey(properties.getSecert())
-        .parseClaimsJws(rawToken);
+  public Jws<Claims> validToken(String rawToken)
+      throws TokenExpiredException, TokenInvalidException {
+    try {
+
+      return Jwts.parser().setSigningKey(properties.getSecert())
+          .parseClaimsJws(rawToken);
+    } catch (ExpiredJwtException e) {   // token 过期
+      throw new TokenExpiredException("Token Expired", e);
+    } catch (UnsupportedJwtException | MalformedJwtException | SignatureException | IllegalArgumentException e) {
+      // 不支持的JWT  修改畸形的jwt  签名错误的jwt  参数错误的jwt
+      throw new TokenInvalidException("Token Invalid", e);
+    }
   }
 }

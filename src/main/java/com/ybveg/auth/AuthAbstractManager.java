@@ -1,6 +1,8 @@
 package com.ybveg.auth;
 
 import com.ybveg.auth.exception.AuthScanException;
+import com.ybveg.auth.exception.TokenExpiredException;
+import com.ybveg.auth.exception.TokenInvalidException;
 import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
@@ -36,7 +38,8 @@ public abstract class AuthAbstractManager implements AuthManager {
   }
 
   @Override
-  public AccessToken parseToken(String rawToken) {
+  public AccessToken parseToken(String rawToken)
+      throws TokenExpiredException, TokenInvalidException {
     return tokenFactory.parseToken(rawToken);
   }
 

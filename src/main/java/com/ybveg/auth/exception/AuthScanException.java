@@ -8,7 +8,7 @@ import java.text.MessageFormat;
  * @auther zbb
  * @create 2017/8/15
  */
-public class AuthScanException extends RuntimeException {
+public class AuthScanException extends Exception {
 
 
   public AuthScanException(String message) {

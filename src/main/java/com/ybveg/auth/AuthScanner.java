@@ -37,19 +37,17 @@ public class AuthScanner {
 
   private ResourcePatternResolver resourcePatternResolver = new PathMatchingResourcePatternResolver();
 
-  public AuthScanner(String scan) throws AuthScanException {
+  public AuthScanner(String scan) {
     if (StringUtils.isNotEmpty(scan)) {
       String[] sc = scan.replaceAll("\\.", "/").split(",");
       scans = new ArrayList<>();
       for (String s : sc) {
         scans.add(PREFIX + s + POSTFIX);
       }
-    } else {
-      throw new AuthScanException("未配置模块扫描包 auth.module.scan");
     }
   }
 
-  public Collection<ModuleModel> scan() {
+  public Collection<ModuleModel> scan() throws AuthScanException {
     final Map<String, ModuleModel> resultMap = new HashMap<>();  // 全局模块集合
     final Map<String, String> codeOfModule = new HashMap<>();  // key 为code 判断Module 编码是否重复
     final Map<String, String> codeOfFunction = new HashMap<>();  // key 为code 判断Module 编码是否重复
@@ -159,8 +157,11 @@ public class AuthScanner {
   }
 
 
-  private List<Resource> getResource() {
+  private List<Resource> getResource() throws AuthScanException {
     List<Resource> list = new ArrayList<>();
+    if (scans == null) {
+      throw new AuthScanException("未配置模块扫描包 auth.module.scan");
+    }
     for (String s : scans) {
       try {
         list.addAll(Arrays.asList(resourcePatternResolver.getResources(s)));
