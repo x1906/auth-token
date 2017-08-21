@@ -33,7 +33,7 @@ public interface AuthManager {
   AccessToken parseToken(String rawToken) throws TokenInvalidException, TokenExpiredException;
 
   /**
-   * 验证权限 请继承AuthAbstractManager 并实现getCurrentAuth
+   * 验证权限 请继承AuthAbstractManager 并实现getAuths
    *
    * @param module 类似模块注解
    * @param function 方法上注解
