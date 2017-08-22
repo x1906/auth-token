@@ -79,6 +79,7 @@ public class TokenFactory {
       AccessToken newToken = createAccessToken(claims.get(Token.JWT_TOKEN).toString(),
           claims.getSubject());
       newToken.setRefresh(true);
+      return newToken;
     }
     return new AccessToken(rawToken, claims);
   }
