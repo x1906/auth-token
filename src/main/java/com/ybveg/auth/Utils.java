@@ -20,6 +20,7 @@ public class Utils {
       module.setClazz(clazz.getName());
       module.setCode(instance.getCode());
       module.setName(instance.getName());
+      module.setGroup(instance.group());
       module.setFunctions(new HashSet<>()); //增加默认功能
       FunctionModel function = classToFunctionModel(DefaultFunction.class);
       module.getFunctions().add(function);

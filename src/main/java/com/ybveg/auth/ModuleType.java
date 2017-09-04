@@ -8,18 +8,22 @@ package com.ybveg.auth;
  * @auther zbb
  * @create 2017/8/11
  */
-public interface ModuleType {
+public interface ModuleType extends Group {
 
   /**
    * 模块编码 编码规则 <br/>
    *
    * 工程名.包名.模块名 例如: <b>system.admin.module</b>
    */
-  String getCode();
+  public String getCode();
 
   /**
    * 模块名称
    */
-  String getName();
+  public String getName();
+
+
+  @Override
+  public String group();
 
 }

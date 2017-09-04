@@ -24,5 +24,4 @@ public @interface Module {
    */
   Class<? extends ModuleType>[] value();
 
-
 }

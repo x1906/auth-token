@@ -21,6 +21,8 @@ public class ModuleModel implements Serializable {
   private String name;  //模块名称
   private String clazz; // class
 
+  private String group; // 模块组
+
   Set<FunctionModel> functions;
 
   @Override
@@ -48,7 +50,7 @@ public class ModuleModel implements Serializable {
     this.functions.add(function);
   }
 
-  public void addAllFunction(Collection<FunctionModel> functions) {
+  public void addFunctions(Collection<FunctionModel> functions) {
     if (this.functions == null) {
       this.functions = new HashSet<>();
     }

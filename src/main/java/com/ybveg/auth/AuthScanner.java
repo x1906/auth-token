@@ -136,13 +136,13 @@ public class AuthScanner {
                 codeOfModule.put(moduleModel.getCode(), moduleModel.getClazz());
               }
 
-              moduleModel.addAllFunction(toAll);   // 将 没有指定模块的功能集合 添加到此模块中
+              moduleModel.addFunctions(toAll);   // 将 没有指定模块的功能集合 添加到此模块中
             }
 
             toSingle.forEach((key, value) -> {    // 将  指定了模块的功能集合 合并到 classHasModule
               ModuleModel moduleModel = classHasModule.get(key);
               if (moduleModel != null) {    // 如果 当前类有此模块  将此模块有的功能加入 否则不操作
-                moduleModel.addAllFunction(value);
+                moduleModel.addFunctions(value);
               }
             });
 
