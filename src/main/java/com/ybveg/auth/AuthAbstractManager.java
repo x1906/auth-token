@@ -7,13 +7,15 @@ import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
 import com.ybveg.auth.token.TokenFactory;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -60,41 +62,35 @@ public abstract class AuthAbstractManager implements AuthManager {
     Optional<List<ModuleModel>> list = Optional.of(this.getAuths(key));
     if (list.isPresent()) {
       final Map<String, Set<String>> map = scanner.resolveToMap(module, function);
-
-      Optional<ModuleModel> result = list.map(moduleModels -> {
-        for (ModuleModel m : moduleModels) {
-          if (map.containsKey(m.getClazz())) {
-            if (function != null) {
-              Set<FunctionModel> functions = Optional.of(m.getFunctions())
-                  .orElse(Collections.emptySet());
-              functions.retainAll(map.get(m.getClazz()));
-              if (functions.size() > 0) {
-                logMessage(m, functions.iterator().next(), key);
-                return m;
-              }
-            } else {
-              logMessage(m, null, key);
-              return m;
+      for (ModuleModel m : list.get()) {
+        if (map.containsKey(m.getClazz())) {
+          Set<String> mapSet = map.get(m.getClazz());
+          if (function == null) {
+            log.info("权限验证通过 拥有访问模块:" + m.getName());
+            return true;
+          } else if (m.getFunctions() != null) {
+            List<FunctionModel> functions = new ArrayList<>(m.getFunctions());
+            functions.retainAll(mapSet); // 求交集
+            if (functions.size() > 0) {
+              log.info(
+                  "权限验证通过 拥有访问模块:" + m.getName() + " 功能:" + functions.iterator().next().getName());
+              return true;
             }
           }
         }
-        return null;
+      }
+      map.forEach((k, v) -> {
+        log.info("模块验证失败 " + k);
+        log.info("模块功能验证失败 " + StringUtils.join(Arrays.asList(v), ","));
       });
-      return result.isPresent();
+
+      return false;
     } else {
       log.info("权限验证失败 无法获取到用户权限信息:" + key);
       return false;
     }
   }
 
-
-  private void logMessage(ModuleModel m, FunctionModel f, String key) {
-    if (f != null) {
-      log.info("权限验证通过 拥有访问模块:" + m.getName() + " 功能:" + f.getName() + " key:" + key);
-    } else {
-      log.info("权限验证通过 拥有访问模块:" + m.getName() + " 用户:" + key);
-    }
-  }
 
   public Collection<ModuleModel> scan() throws AuthScanException {
     return scanner.scan();

@@ -38,9 +38,11 @@ public class ModuleModel implements Serializable {
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof ModuleModel) {
-      return ((ModuleModel) obj).getClazz().equals(this.clazz);
+      ModuleModel model = (ModuleModel) obj;
+      return this.clazz.equals(model.getClazz());
+    } else {
+      return obj.equals(this.clazz);
     }
-    return super.equals(obj);
   }
 
   public void addFunction(FunctionModel function) {

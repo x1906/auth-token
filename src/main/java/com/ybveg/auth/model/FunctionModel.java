@@ -33,7 +33,8 @@ public class FunctionModel implements Serializable {
     if (obj instanceof FunctionModel) {
       FunctionModel model = (FunctionModel) obj;
       return this.clazz.equals(model.getClazz());
+    } else {
+      return obj.equals(this.clazz);
     }
-    return super.equals(obj);
   }
 }
