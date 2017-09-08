@@ -31,6 +31,8 @@ public abstract class AuthAbstractManager implements AuthManager {
   @Autowired
   private AuthScanner scanner;
 
+  private String MESSAGE = "";
+
 
   @Override
   public <T> AccessToken createAccessToken(String id, T data) {
@@ -51,10 +53,14 @@ public abstract class AuthAbstractManager implements AuthManager {
    * @param key 获取权限参数
    */
   @Override
-  public boolean valid(final Module module, final Function function, String key) {
+  public boolean valid(final Module module, final Function function, final String key) {
+    if (module == null) {  // 如果模块注解为null 返回true
+      return true;
+    }
     Optional<List<ModuleModel>> list = Optional.of(this.getAuths(key));
     if (list.isPresent()) {
       final Map<String, Set<String>> map = scanner.resolveToMap(module, function);
+
       Optional<ModuleModel> result = list.map(moduleModels -> {
         for (ModuleModel m : moduleModels) {
           if (map.containsKey(m.getClazz())) {
@@ -63,9 +69,11 @@ public abstract class AuthAbstractManager implements AuthManager {
                   .orElse(Collections.emptySet());
               functions.retainAll(map.get(m.getClazz()));
               if (functions.size() > 0) {
+                logMessage(m, functions.iterator().next(), key);
                 return m;
               }
             } else {
+              logMessage(m, null, key);
               return m;
             }
           }
@@ -76,6 +84,15 @@ public abstract class AuthAbstractManager implements AuthManager {
     } else {
       log.info("权限验证失败 无法获取到用户权限信息:" + key);
       return false;
+    }
+  }
+
+
+  private void logMessage(ModuleModel m, FunctionModel f, String key) {
+    if (f != null) {
+      log.info("权限验证通过 拥有访问模块:" + m.getName() + " 功能:" + f.getName() + " key:" + key);
+    } else {
+      log.info("权限验证通过 拥有访问模块:" + m.getName() + " 用户:" + key);
     }
   }
 

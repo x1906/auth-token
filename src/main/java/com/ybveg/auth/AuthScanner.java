@@ -193,23 +193,25 @@ public class AuthScanner {
    */
   public Map<String, Set<String>> resolveToMap(Module module, Function function) {
     Map<String, Set<String>> map = new HashMap<>();
-
-    Class<? extends ModuleType>[] moduleClasses = module.value();
-    Class<? extends FunctionType>[] functionClasses = function.value();
-
     Set<String> toAll = new HashSet<>();
-    Map<String, Set<String>> relationMap = moduleRelationFunction(function.relation());
-
-    for (Class<? extends FunctionType> functionClazz : functionClasses) {
-      if (!relationMap.containsKey(functionClazz.getName())) { // 如果指定关系 表明所有
-        toAll.add(functionClazz.getName());
+    Map<String, Set<String>> relationMap = new HashMap<>();
+    Class<? extends ModuleType>[] moduleClasses = module.value();
+    if (function != null) {
+      Class<? extends FunctionType>[] functionClasses = function.value();
+      relationMap = moduleRelationFunction(function.relation());
+      for (Class<? extends FunctionType> functionClazz : functionClasses) {
+        if (!relationMap.containsKey(functionClazz.getName())) { // 如果指定关系 表明所有
+          toAll.add(functionClazz.getName());
+        }
       }
     }
 
     for (Class<? extends ModuleType> moduleClazz : moduleClasses) {
       Set<String> set = new HashSet<>();
       set.addAll(toAll);
-      set.addAll(relationMap.get(moduleClazz.getName()));    //指定模块
+      if (relationMap.containsKey(moduleClazz.getName())) {
+        set.addAll(relationMap.get(moduleClazz.getName()));    //指定模块
+      }
       map.put(moduleClazz.getName(), set);
     }
 
