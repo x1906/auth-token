@@ -66,24 +66,35 @@ public abstract class AuthAbstractManager implements AuthManager {
         if (map.containsKey(m.getClazz())) {
           Set<String> mapSet = map.get(m.getClazz());
           if (function == null) {
-            log.info("权限验证通过 拥有访问模块:" + m.getName());
+            log.info("权限验证通过 拥有访问模块:{}", m.getName());
             return true;
           } else if (m.getFunctions() != null) {
             List<FunctionModel> functions = new ArrayList<>(m.getFunctions());
             functions.retainAll(mapSet); // 求交集
             if (functions.size() > 0) {
               log.info(
-                  "权限验证通过 拥有访问模块:" + m.getName() + " 功能:" + functions.iterator().next().getName());
+                  "权限验证通过 拥有访问模块:{} 功能:{}", m.getName(), functions.iterator().next().getName());
               return true;
             }
           }
         }
       }
-      map.forEach((k, v) -> {
-        log.info("模块验证失败 " + k);
-        log.info("模块功能验证失败 " + StringUtils.join(Arrays.asList(v), ","));
-      });
+      final List<String> m_key = new ArrayList<>();
+      final List f_value = new ArrayList();
 
+      if (log.isDebugEnabled()) {
+        map.forEach((k, v) -> {
+          m_key.add(k);
+          m_key.add(StringUtils.join(Arrays.asList(v), ","));
+//        log.info("模块验证失败 " + k);
+//        log.info("模块功能验证失败 " + StringUtils.join(Arrays.asList(v), ","));
+        });
+
+        log.debug("模块验证失败 " + StringUtils.join(Arrays.asList(m_key), ","));
+        if (!f_value.isEmpty()) {
+          log.debug("模块功能验证失败 " + StringUtils.join(Arrays.asList(f_value), ","));
+        }
+      }
       return false;
     } else {
       log.info("权限验证失败 无法获取到用户权限信息:" + key);
