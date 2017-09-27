@@ -6,6 +6,7 @@ import com.ybveg.auth.exception.TokenInvalidException;
 import com.ybveg.auth.model.FunctionModel;
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
+import com.ybveg.auth.token.RefreshToken;
 import com.ybveg.auth.token.TokenFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,18 +34,41 @@ public abstract class AuthAbstractManager implements AuthManager {
   @Autowired
   private AuthScanner scanner;
 
-  private String MESSAGE = "";
-
-
   @Override
-  public <T> AccessToken createAccessToken(String id, T data) {
-    return tokenFactory.createAccessToken(id, data);
+  public <T> AccessToken createAccessToken(String userId, T data) {
+    return tokenFactory.createAccessToken(userId, data);
   }
 
   @Override
-  public AccessToken parseToken(String rawToken)
+  public RefreshToken createRefreshToken(String userId) {
+    return tokenFactory.createRefreshToken(userId);
+  }
+
+  @Override
+  public AccessToken parseAccess(String rawToken)
       throws TokenExpiredException, TokenInvalidException {
-    return tokenFactory.parseToken(rawToken);
+    return tokenFactory.parseAccess(rawToken);
+  }
+
+
+  @Override
+  public RefreshToken parseRefresh(String rawToken)
+      throws TokenExpiredException, TokenInvalidException {
+    return tokenFactory.parseRefresh(rawToken);
+  }
+
+  /**
+   * 获取刷新令牌有效时间
+   */
+  public int getRefreshExpire() {
+    return tokenFactory.getRefreshExpire();
+  }
+
+  /**
+   * 获取数据令牌有效时间
+   */
+  public int getAccessExpire() {
+    return tokenFactory.getAccessExpire();
   }
 
   /**
@@ -103,6 +127,9 @@ public abstract class AuthAbstractManager implements AuthManager {
   }
 
 
+  /**
+   * 扫描模块
+   */
   public Collection<ModuleModel> scan() throws AuthScanException {
     return scanner.scan();
   }

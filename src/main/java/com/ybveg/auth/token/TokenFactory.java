@@ -15,6 +15,7 @@ import io.jsonwebtoken.UnsupportedJwtException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 
 
@@ -34,19 +35,19 @@ public class TokenFactory {
   /**
    * 创建数据访问Token
    *
-   * @param id 用户ID或者用户名
+   * @param userId 用户ID或者用户名
    * @param data 用户其他数据不要存敏感数据
    */
-  public <T> AccessToken createAccessToken(String id, T data) {
+  public <T> AccessToken createAccessToken(String userId, T data) {
 
-    if (StringUtils.isBlank(id)) { //
-      throw new IllegalArgumentException("Cannot create Token without id");
+    if (StringUtils.isBlank(userId)) { //
+      throw new IllegalArgumentException("Cannot create Token without userId");
     }
 
     String subjet = JSONObject.toJSONString(data);
 
-    Claims claims = Jwts.claims().setSubject(subjet);
-    claims.put(Token.JWT_TOKEN, id);
+    Claims claims = Jwts.claims().setSubject(subjet).setId(UUID());
+    claims.put(Token.USER, userId);
 
     LocalDateTime currentTime = LocalDateTime.now();
 
@@ -56,7 +57,7 @@ public class TokenFactory {
         .setIssuedAt(Date.from(currentTime.atZone(ZoneId.systemDefault()).toInstant()))
         .setExpiration(Date.from(currentTime
             .plusMinutes(
-                properties.getExpire())  //给token过期设置双倍时间 当token 超过这个时间的一般要求刷新token 在拦截器里实现
+                properties.getExpire())  // 数据令牌过期时间
             .atZone(ZoneId.systemDefault()).toInstant()))
         .signWith(SignatureAlgorithm.HS512, properties.getSecert())
         .compact();
@@ -64,24 +65,51 @@ public class TokenFactory {
   }
 
   /**
-   * 验证或者刷新token 如果未刷新token  返回null
+   * 创建数据访问Token
+   *
+   * @param userId 用户ID或者用户名
+   */
+  public RefreshToken createRefreshToken(String userId) {
+    if (StringUtils.isBlank(userId)) { //
+      throw new IllegalArgumentException("Cannot create Token without userId");
+    }
+    Claims claims = Jwts.claims().setId(UUID());
+    claims.put(Token.USER, userId);
+    LocalDateTime currentTime = LocalDateTime.now();
+    String token = Jwts.builder()
+        .setClaims(claims)
+        .setIssuer(properties.getIssuer())
+        .setIssuedAt(Date.from(currentTime.atZone(ZoneId.systemDefault()).toInstant()))
+        .setExpiration(Date.from(currentTime.plusMinutes(properties.getRefreshExpire())  // 刷新令牌过期时间
+            .atZone(ZoneId.systemDefault()).toInstant()))
+        .signWith(SignatureAlgorithm.HS512, properties.getSecert())
+        .compact();
+    return new RefreshToken(token, claims);
+  }
+
+
+  /**
+   * 验证Toekn
    *
    * @param rawToken token
-   * @return 新的token
    */
-  public AccessToken parseToken(String rawToken)
+  public AccessToken parseAccess(String rawToken)
       throws TokenExpiredException, TokenInvalidException {
     Jws<Claims> jws = validToken(rawToken);
     Claims claims = jws.getBody();
-    Date iat = claims.getIssuedAt();
-    long time = new Date().getTime() - iat.getTime();
-    if ((time / 1000 / 60) > properties.getRefreshExpire()) {  //令牌可用时间 超过过期时间 需要刷新
-      AccessToken newToken = createAccessToken(claims.get(Token.JWT_TOKEN).toString(),
-          claims.getSubject());
-      newToken.setRefresh(true);
-      return newToken;
-    }
     return new AccessToken(rawToken, claims);
+  }
+
+  /**
+   * 验证刷新令牌
+   *
+   * @param rawToken token
+   */
+  public RefreshToken parseRefresh(String rawToken)
+      throws TokenExpiredException, TokenInvalidException {
+    Jws<Claims> jws = validToken(rawToken);
+    Claims claims = jws.getBody();
+    return new RefreshToken(rawToken, claims);
   }
 
   public Jws<Claims> validToken(String rawToken)
@@ -96,5 +124,23 @@ public class TokenFactory {
       // 不支持的JWT  修改畸形的jwt  签名错误的jwt  参数错误的jwt
       throw new TokenInvalidException("Token Invalid", e);
     }
+  }
+
+  /**
+   * 获取刷新令牌有效时间
+   */
+  public int getRefreshExpire() {
+    return properties.getRefreshExpire();
+  }
+
+  /**
+   * 获取数据令牌有效时间
+   */
+  public int getAccessExpire() {
+    return properties.getExpire();
+  }
+
+  private String UUID() {
+    return UUID.randomUUID().toString();
   }
 }

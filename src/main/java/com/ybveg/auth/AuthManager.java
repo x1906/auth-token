@@ -5,6 +5,7 @@ import com.ybveg.auth.exception.TokenExpiredException;
 import com.ybveg.auth.exception.TokenInvalidException;
 import com.ybveg.auth.model.ModuleModel;
 import com.ybveg.auth.token.AccessToken;
+import com.ybveg.auth.token.RefreshToken;
 import java.util.Collection;
 import java.util.List;
 
@@ -19,18 +20,32 @@ public interface AuthManager {
   /**
    * 创建数据访问Token
    *
-   * @param id 用户ID或者用户名
+   * @param userId 用户ID或者用户名
    * @param data 用户其他数据不要存敏感数据
    */
-  <T> AccessToken createAccessToken(String id, T data);
+  <T> AccessToken createAccessToken(String userId, T data);
 
   /**
-   * 验证或者刷新token 如果未刷新token  返回null
+   * 创建刷新令牌
+   *
+   * @param userId ID
+   */
+  RefreshToken createRefreshToken(String userId);
+
+  /**
+   * 验证数据令牌
    *
    * @param rawToken token
-   * @return 新的token
    */
-  AccessToken parseToken(String rawToken) throws TokenInvalidException, TokenExpiredException;
+  AccessToken parseAccess(String rawToken) throws TokenInvalidException, TokenExpiredException;
+
+  /**
+   * 验证刷新令牌
+   *
+   * @param rawToken token
+   */
+  RefreshToken parseRefresh(String rawToken)
+      throws TokenExpiredException, TokenInvalidException;
 
   /**
    * 验证权限 请继承AuthAbstractManager 并实现getAuths
@@ -52,4 +67,14 @@ public interface AuthManager {
    * 扫描模块功能, 配置参数 auth.module.scan
    */
   Collection<ModuleModel> scan() throws AuthScanException;
+
+  /**
+   * 作废数据令牌
+   */
+  void evictAccess(String id);
+
+  /**
+   * 作废刷新令牌
+   */
+  void evictRefresh(String id);
 }
