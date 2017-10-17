@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class TokenProperties {
 
   /**
-   * token 有效时间 在有效时间内可以更新token
+   * 数据令牌有效时间
    */
   private int expire;
   /**
@@ -23,7 +23,7 @@ public class TokenProperties {
   private String secert;
 
   /**
-   * token 可用时间 超过可用时间 会自动刷新token 一般有效时间的一半
+   * 刷新令牌过期时间
    */
   private int refreshExpire;
 
